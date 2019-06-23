@@ -1,5 +1,5 @@
 #![feature(box_syntax)]
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 mod ahocorasick;
 mod automaton;
@@ -92,10 +92,7 @@ impl<'p, D> SimpleFinder<'p, D> {
         SimpleFinder { aho, data }
     }
 
-    pub fn find_all<'a, 'b: 'a>(
-        &'a self,
-        haystack: &'b str,
-    ) -> SimpleFinderIter<'a, 'b, 'p, D> {
+    pub fn find_all<'a, 'b: 'a>(&'a self, haystack: &'b str) -> SimpleFinderIter<'a, 'b, 'p, D> {
         SimpleFinderIter {
             finder: self,
             iter: self.aho.find_overlapping_iter(haystack),
@@ -108,6 +105,12 @@ impl<'p, D> SimpleFinder<'p, D> {
 
     pub fn heap_bytes(&self) -> usize {
         self.aho.heap_bytes()
+    }
+}
+
+impl<'p, D: std::hash::Hash + std::cmp::Eq + Copy> SimpleFinder<'p, D> {
+    pub fn find_all_unique<'a, 'b>(&'a self, haystack: &'b str) -> HashSet<D> {
+        self.find_all(haystack).map(|(_, d)| *d).collect()
     }
 }
 
@@ -134,6 +137,29 @@ mod test {
             results.len(),
             6,
             "Results {:?} was not 6 in length?",
+            results
+        );
+        assert!(results.contains(&123));
+        assert!(results.contains(&234));
+        assert!(results.contains(&345));
+        assert!(results.contains(&456));
+    }
+
+    #[test]
+    fn test_unique() {
+        let finder = SimpleFinder::new(vec![
+            ("foo", 123),
+            ("bar", 234),
+            ("baz", 345),
+            ("bar baz", 456),
+        ]);
+
+        let results = finder.find_all_unique("foo bar baz foobar foo'bar foo,bar");
+
+        assert_eq!(
+            results.len(),
+            4,
+            "Results {:?} was not 4 in length?",
             results
         );
         assert!(results.contains(&123));

@@ -46,8 +46,6 @@ impl<'a, 'b, 'p, S: StateID> FindOverlappingIter<'a, 'b, 'p, S> {
             .unicode_words()
             .collect();
 
-        println!("haystack: {:?}", haystack);
-
         FindOverlappingIter {
             fsm: &ac.imp,
             haystack,

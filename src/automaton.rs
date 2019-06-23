@@ -94,40 +94,13 @@ pub(crate) trait Automaton {
             state_id.to_usize()
         );
 
-        // println!("outer: state: {}, at: {}", state_id.to_usize(), at);
-
         for (idx, elem) in haystack[at..].iter().enumerate() {
             *state_id = unsafe { self.next_state_unchecked_no_fail(*state_id, elem) };
-            // println!("inner: state: {}", state_id.to_usize());
-
             if let Some(m) = self.get_match(*state_id, 0, idx + at + 1) {
                 return Some(m);
             }
         }
         None
-
-        // unsafe {
-        //     let start = haystack.as_ptr();
-        //     let end = haystack[haystack.len()..].as_ptr();
-        //     let mut ptr = haystack[at..].as_ptr();
-        //     while ptr < end {
-        //         // SAFETY: next_state is safe for all possible u8 values,
-        //         // so the only thing we're concerned about is the validity
-        //         // of `state_id`. `state_id` either comes from the caller
-        //         // (in which case, we assert above that it is valid), or it
-        //         // comes from the return value of next_state, which is also
-        //         // guaranteed to be valid.
-        //         *state_id = self.next_state_unchecked_no_fail(*state_id, *ptr);
-        //         ptr = ptr.offset(1);
-
-        //         let end = ptr as usize - start as usize;
-        //         eprintln!("at: {}, start: {:?}, end: {}, ptr: {:?}", at, start, end, ptr);
-        //         if let Some(m) = self.get_match(*state_id, 0, end) {
-        //             return Some(m);
-        //         }
-        //     }
-        //     None
-        // }
     }
 
     /// Execute an overlapping search.
@@ -144,7 +117,6 @@ pub(crate) trait Automaton {
         state_id: &mut Self::ID,
         match_index: &mut usize,
     ) -> Option<Match> {
-        println!("entering overlapping_find_at");
         let match_count = self.match_count(*state_id);
         if *match_index < match_count {
             // This is guaranteed to return a match since
