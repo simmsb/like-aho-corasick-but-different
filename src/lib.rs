@@ -125,15 +125,15 @@ mod test {
         ]);
 
         let results: Vec<u64> = finder
-            .find_all("foo bar baz foobar")
+            .find_all("foo bar baz foobar foo'bar foo,bar")
             .map(|(_, k)| k)
             .cloned()
             .collect();
 
         assert_eq!(
             results.len(),
-            4,
-            "Results {:?} was not 4 in length?",
+            6,
+            "Results {:?} was not 6 in length?",
             results
         );
         assert!(results.contains(&123));

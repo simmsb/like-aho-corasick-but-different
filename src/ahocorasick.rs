@@ -43,9 +43,10 @@ impl<'a, 'b, 'p, S: StateID> FindOverlappingIter<'a, 'b, 'p, S> {
         use unicode_segmentation::UnicodeSegmentation;
 
         let haystack = haystack
-            .split_word_bounds()
-            .filter(|w| !w.trim().is_empty())
+            .unicode_words()
             .collect();
+
+        println!("haystack: {:?}", haystack);
 
         FindOverlappingIter {
             fsm: &ac.imp,

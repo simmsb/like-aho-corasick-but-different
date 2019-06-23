@@ -238,8 +238,7 @@ impl<'a, S: StateID> Compiler<'a, S> {
         let patterns: Vec<Vec<_>> = patterns
             .into_iter()
             .map(|p| {
-                p.split_word_bounds()
-                 .filter(|w| !w.trim().is_empty())
+                p.unicode_words()
                  .collect()
             })
             .collect();
