@@ -406,7 +406,11 @@ impl<'a, S: StateID> Compiler<'a, S> {
 
                 let mut fail = it.nfa().state(id).fail;
                 while it.nfa().state(fail).next_state(b) == fail_id() {
-                    fail = it.nfa().state(fail).fail;
+                    let new_fail = it.nfa().state(fail).fail;
+                    if new_fail == fail {
+                        break;
+                    }
+                    fail = new_fail;
                 }
                 fail = it.nfa().state(fail).next_state(b);
                 it.nfa().state_mut(next).fail = fail;
