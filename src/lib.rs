@@ -103,7 +103,7 @@ impl<'p, D> SimpleFinder<'p, D> {
     }
 
     pub fn heap_bytes(&self) -> usize {
-        self.aho.heap_bytes()
+        self.aho.heap_bytes() + self.data.capacity() * (std::mem::size_of::<(usize, D)>())
     }
 }
 
@@ -117,55 +117,55 @@ impl<'p, D: std::hash::Hash + std::cmp::Eq + Copy> SimpleFinder<'p, D> {
 mod test {
     use super::*;
 
-    // #[test]
-    // fn test_iguess() {
-    //     let finder = SimpleFinder::new(vec![
-    //         ("foo", 123),
-    //         ("bar", 234),
-    //         ("baz", 345),
-    //         ("bar baz", 456),
-    //     ]);
+    #[test]
+    fn test_iguess() {
+        let finder = SimpleFinder::new(vec![
+            ("foo", 123),
+            ("bar", 234),
+            ("baz", 345),
+            ("bar baz", 456),
+        ]);
 
-    //     let results: Vec<u64> = finder
-    //         .find_all("foo bar baz foobar foo'bar foo,bar")
-    //         .map(|(_, k)| k)
-    //         .cloned()
-    //         .collect();
+        let results: Vec<u64> = finder
+            .find_all("foo bar baz foobar foo'bar foo,bar")
+            .map(|(_, k)| k)
+            .cloned()
+            .collect();
 
-    //     assert_eq!(
-    //         results.len(),
-    //         6,
-    //         "Results {:?} was not 6 in length?",
-    //         results
-    //     );
-    //     assert!(results.contains(&123));
-    //     assert!(results.contains(&234));
-    //     assert!(results.contains(&345));
-    //     assert!(results.contains(&456));
-    // }
+        assert_eq!(
+            results.len(),
+            6,
+            "Results {:?} was not 6 in length?",
+            results
+        );
+        assert!(results.contains(&123));
+        assert!(results.contains(&234));
+        assert!(results.contains(&345));
+        assert!(results.contains(&456));
+    }
 
-    // #[test]
-    // fn test_unique() {
-    //     let finder = SimpleFinder::new(vec![
-    //         ("foo", 123),
-    //         ("bar", 234),
-    //         ("baz", 345),
-    //         ("bar baz", 456),
-    //     ]);
+    #[test]
+    fn test_unique() {
+        let finder = SimpleFinder::new(vec![
+            ("foo", 123),
+            ("bar", 234),
+            ("baz", 345),
+            ("bar baz", 456),
+        ]);
 
-    //     let results = finder.find_all_unique("foo bar baz foobar foo'bar foo,bar");
+        let results = finder.find_all_unique("foo bar baz foobar foo'bar foo,bar");
 
-    //     assert_eq!(
-    //         results.len(),
-    //         4,
-    //         "Results {:?} was not 4 in length?",
-    //         results
-    //     );
-    //     assert!(results.contains(&123));
-    //     assert!(results.contains(&234));
-    //     assert!(results.contains(&345));
-    //     assert!(results.contains(&456));
-    // }
+        assert_eq!(
+            results.len(),
+            4,
+            "Results {:?} was not 4 in length?",
+            results
+        );
+        assert!(results.contains(&123));
+        assert!(results.contains(&234));
+        assert!(results.contains(&345));
+        assert!(results.contains(&456));
+    }
 
     #[test]
     fn test_loops() {
