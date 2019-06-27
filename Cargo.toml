@@ -1,6 +1,6 @@
 [package]
 name = "like-aho-corasick-but-different"
-version = "0.1.4-owned"
+version = "0.1.5-owned"
 authors = ["Ben Simms <ben@bensimms.moe>"]
 edition = "2018"
 

@@ -105,6 +105,10 @@ impl<D> SimpleFinder<D> {
     pub fn heap_bytes(&self) -> usize {
         self.aho.heap_bytes() + self.data.capacity() * (std::mem::size_of::<(usize, D)>())
     }
+
+    pub fn data(&self) -> &HashMap<usize, D> {
+        &self.data
+    }
 }
 
 impl<'p, D: std::hash::Hash + std::cmp::Eq + Copy> SimpleFinder<D> {
