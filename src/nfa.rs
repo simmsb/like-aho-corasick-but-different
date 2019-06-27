@@ -1,4 +1,4 @@
-use std::{cmp, collections::VecDeque, mem::size_of};
+use std::{cmp, collections::{VecDeque, HashMap}, mem::size_of};
 
 use crate::{
     automaton::Automaton,
@@ -59,7 +59,7 @@ impl<'a, S: StateID> NFA<'a, S> {
     }
 
     fn add_sparse_state(&mut self) -> Option<S> {
-        let trans = Transitions(vec![]);
+        let trans = Transitions(HashMap::new());
         let id = usize_to_state_id(self.states.len())?;
         self.states.push(State {
             trans,
@@ -149,7 +149,7 @@ impl<'a, S: StateID> State<'a, S> {
 }
 
 #[derive(Clone)]
-struct Transitions<'a, S>(pub Vec<(&'a str, S)>);
+struct Transitions<'a, S>(pub HashMap<&'a str, S>);
 
 impl<'a, S: StateID> Transitions<'a, S> {
     fn heap_bytes(&self) -> usize {
@@ -157,22 +157,22 @@ impl<'a, S: StateID> Transitions<'a, S> {
     }
 
     fn next_state(&self, input: &str) -> S {
-        // self.0.get(input).cloned().unwrap_or(fail_id())
+        self.0.get(input).cloned().unwrap_or(fail_id())
 
-        for &(b, id) in &self.0 {
-            if b == input {
-                return id;
-            }
-        }
-        fail_id()
+        // for &(b, id) in &self.0 {
+        //     if b == input {
+        //         return id;
+        //     }
+        // }
+        // fail_id()
     }
 
     fn set_next_state<'b: 'a>(&mut self, input: &'b str, next: S) {
-        // self.0.insert(input, next);
-        match self.0.binary_search_by_key(&input, |&(b, _)| b) {
-            Ok(i) => self.0[i] = (input, next),
-            Err(i) => self.0.insert(i, (input, next)),
-        }
+        self.0.insert(input, next);
+        // match self.0.binary_search_by_key(&input, |&(b, _)| b) {
+        //     Ok(i) => self.0[i] = (input, next),
+        //     Err(i) => self.0.insert(i, (input, next)),
+        // }
     }
 }
 
@@ -180,14 +180,18 @@ struct IterTransitionsMut<'a, 'b, S: StateID + 'a> {
     nfa: &'a mut NFA<'b, S>,
     state_id: S,
     cur: usize,
+    keys: Vec<&'b str>,
 }
 
 impl<'a, 'b, S: StateID> IterTransitionsMut<'a, 'b, S> {
     fn new(nfa: &'a mut NFA<'b, S>, state_id: S) -> IterTransitionsMut<'a, 'b, S> {
+        let keys = nfa.states[state_id.to_usize()].trans.0.keys().cloned().collect();
+
         IterTransitionsMut {
             nfa,
             state_id,
             cur: 0,
+            keys,
         }
     }
 
@@ -205,8 +209,9 @@ impl<'a, 'b, S: StateID> Iterator for IterTransitionsMut<'a, 'b, S> {
             return None;
         }
         let i = self.cur;
+        let key = self.keys[i];
         self.cur += 1;
-        Some(trans.0[i])
+        Some((key, trans.0[key]))
     }
 }
 
