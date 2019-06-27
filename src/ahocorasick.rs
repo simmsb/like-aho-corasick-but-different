@@ -6,15 +6,15 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub(crate) struct AhoCorasick<'p, S: StateID = usize> {
-    imp: NFA<'p, S>,
+pub(crate) struct AhoCorasick<S: StateID = usize> {
+    imp: NFA<S>,
 }
 
-impl<'p, S: StateID> AhoCorasick<'p, S> {
-    pub(crate) fn find_overlapping_iter<'a, 'b: 'a>(
+impl<S: StateID> AhoCorasick<S> {
+    pub(crate) fn find_overlapping_iter<'a: 'b, 'b>(
         &'a self,
         haystack: &'b str,
-    ) -> FindOverlappingIter<'a, 'b, 'p, S> {
+    ) -> FindOverlappingIter<'a, 'b, S> {
         FindOverlappingIter::new(self, haystack)
     }
 
@@ -27,19 +27,19 @@ impl<'p, S: StateID> AhoCorasick<'p, S> {
     }
 }
 
-pub(crate) struct FindOverlappingIter<'a, 'b, 'p: 'a, S: 'a + StateID> {
-    fsm: &'a NFA<'p, S>,
+pub(crate) struct FindOverlappingIter<'a, 'b, S: 'a + StateID> {
+    fsm: &'a NFA<S>,
     haystack: Vec<&'b str>,
     pos: usize,
     state_id: S,
     match_index: usize,
 }
 
-impl<'a, 'b, 'p, S: StateID> FindOverlappingIter<'a, 'b, 'p, S> {
+impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
     fn new(
-        ac: &'a AhoCorasick<'p, S>,
+        ac: &'a AhoCorasick<S>,
         haystack: &'b str,
-    ) -> FindOverlappingIter<'a, 'b, 'p, S> {
+    ) -> FindOverlappingIter<'a, 'b, S> {
         use unicode_segmentation::UnicodeSegmentation;
 
         let haystack = haystack
@@ -56,7 +56,7 @@ impl<'a, 'b, 'p, S: StateID> FindOverlappingIter<'a, 'b, 'p, S> {
     }
 }
 
-impl<'a, 'b, 'p, S: StateID> Iterator for FindOverlappingIter<'a, 'b, 'p, S> {
+impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
     type Item = Match;
 
     fn next(&mut self) -> Option<Match> {
@@ -76,7 +76,7 @@ impl<'a, 'b, 'p, S: StateID> Iterator for FindOverlappingIter<'a, 'b, 'p, S> {
     }
 }
 
-pub(crate) fn build_aho_corasick<'p, I>(patterns: I) -> AhoCorasick<'p>
+pub(crate) fn build_aho_corasick<'p, I>(patterns: I) -> AhoCorasick
 where
     I: IntoIterator<Item = &'p str>,
 {
