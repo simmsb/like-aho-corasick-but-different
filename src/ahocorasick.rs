@@ -40,10 +40,10 @@ impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
         ac: &'a AhoCorasick<S>,
         haystack: &'b str,
     ) -> FindOverlappingIter<'a, 'b, S> {
-        use unicode_segmentation::UnicodeSegmentation;
+        use crate::word_split_trait::WordBoundarySplitter;
 
         let haystack = haystack
-            .unicode_words()
+            .unicode_words_and_syms()
             .collect();
 
         FindOverlappingIter {
@@ -67,7 +67,7 @@ impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
             &mut self.match_index,
         );
         match result {
-            None => return None,
+            None => None,
             Some(m) => {
                 self.pos = m.end();
                 Some(m)

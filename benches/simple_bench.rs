@@ -23,14 +23,12 @@ fn random_words(len: usize) -> String {
 }
 
 fn string_word_ranges(words: &str) -> Vec<Range<usize>> {
-    use unicode_segmentation::UnicodeSegmentation;
-
     fn has_alphanumeric(s: &str) -> bool {
         s.chars().any(char::is_alphanumeric)
     }
 
     words
-        .split_word_bound_indices()
+        // .split_word_bound_indices() TODO: reimplement
         .filter(|(_, s)| has_alphanumeric(s))
         .map(|(idx, s)| idx..(idx + s.len()))
         .collect()

@@ -156,7 +156,7 @@ impl<S: StateID> Transitions<S> {
     }
 
     fn next_state(&self, input: &str) -> S {
-        self.0.get(input).cloned().unwrap_or(fail_id())
+        self.0.get(input).cloned().unwrap_or_else(fail_id)
     }
 
     fn set_next_state(&mut self, input: &str, next: S) {
@@ -230,13 +230,13 @@ impl<S: StateID> Compiler<S> {
     where
         I: IntoIterator<Item = &'a str>,
     {
-        use unicode_segmentation::UnicodeSegmentation;
+        use crate::word_split_trait::WordBoundarySplitter;
 
         self.add_state()?; // the fail state, which is never entered
         self.add_state()?; // the start state
         let patterns: Vec<Vec<_>> = patterns
             .into_iter()
-            .map(|p| p.unicode_words().collect())
+            .map(|p| p.unicode_words_and_syms().collect())
             .collect();
         self.build_trie(&patterns)?;
         self.fill_failure_transitions_standard();
@@ -249,7 +249,7 @@ impl<S: StateID> Compiler<S> {
     /// automaton, where every pattern given has a path from the start state to
     /// the end of the pattern.
     fn build_trie(&mut self, patterns: &[Vec<&str>]) -> Option<()> {
-        'PATTERNS: for (pati, pat) in patterns.into_iter().enumerate() {
+        for (pati, pat) in patterns.iter().enumerate() {
             self.nfa.max_pattern_len = cmp::max(self.nfa.max_pattern_len, pat.len());
             self.nfa.pattern_count += 1;
 

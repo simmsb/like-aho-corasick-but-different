@@ -4,6 +4,9 @@ mod ahocorasick;
 mod automaton;
 mod nfa;
 mod state_id;
+mod word_split_trait;
+mod unicode_tables;
+
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Match {
@@ -138,8 +141,8 @@ mod test {
 
         assert_eq!(
             results.len(),
-            6,
-            "Results {:?} was not 6 in length?",
+            8,
+            "Results {:?} was not 8 in length?",
             results
         );
         assert!(results.contains(&123));
