@@ -1,4 +1,8 @@
-use std::{cmp, collections::{VecDeque, HashMap}, mem::size_of};
+use std::{
+    cmp,
+    collections::{HashMap, VecDeque},
+    mem::size_of,
+};
 
 use crate::{
     automaton::Automaton,
@@ -10,15 +14,15 @@ type PatternID = usize;
 type PatternLength = usize;
 
 #[derive(Clone)]
-pub(crate) struct NFA<'a, S> {
+pub(crate) struct NFA<S> {
     start_id: S,
     max_pattern_len: usize,
     pattern_count: usize,
     heap_bytes: usize,
-    states: Vec<State<'a, S>>,
+    states: Vec<State<S>>,
 }
 
-impl<'a, S: StateID> NFA<'a, S> {
+impl<S: StateID> NFA<S> {
     pub(crate) fn heap_bytes(&self) -> usize {
         self.heap_bytes
     }
@@ -27,24 +31,19 @@ impl<'a, S: StateID> NFA<'a, S> {
         self.pattern_count
     }
 
-    fn state(&self, id: S) -> &State<'a, S> {
+    fn state(&self, id: S) -> &State<S> {
         &self.states[id.to_usize()]
     }
 
-    fn state_mut(&mut self, id: S) -> &mut State<'a, S> {
+    fn state_mut(&mut self, id: S) -> &mut State<S> {
         &mut self.states[id.to_usize()]
     }
 
-    fn start(&self) -> &State<'a, S> {
+    fn start(&self) -> &State<S> {
         self.state(self.start_id)
     }
 
-    // fn start_mut(&mut self) -> &mut State<'a, S> {
-    //     let id = self.start_id;
-    //     self.state_mut(id)
-    // }
-
-    fn iter_transitions_mut(&mut self, id: S) -> IterTransitionsMut<'_, 'a, S> {
+    fn iter_transitions_mut(&mut self, id: S) -> IterTransitionsMut<'_, S> {
         IterTransitionsMut::new(self, id)
     }
 
@@ -70,7 +69,7 @@ impl<'a, S: StateID> NFA<'a, S> {
     }
 }
 
-impl<'a, S: StateID> Automaton for NFA<'a, S> {
+impl<S: StateID> Automaton for NFA<S> {
     type ID = S;
 
     fn start_state(&self) -> S {
@@ -120,13 +119,13 @@ impl<'a, S: StateID> Automaton for NFA<'a, S> {
 }
 
 #[derive(Clone)]
-pub(crate) struct State<'a, S> {
-    trans: Transitions<'a, S>,
+pub(crate) struct State<S> {
+    trans: Transitions<S>,
     fail: S,
     matches: Vec<(PatternID, PatternLength)>,
 }
 
-impl<'a, S: StateID> State<'a, S> {
+impl<S: StateID> State<S> {
     fn heap_bytes(&self) -> usize {
         self.trans.heap_bytes() + (self.matches.len() * size_of::<(PatternID, PatternLength)>())
     }
@@ -143,49 +142,44 @@ impl<'a, S: StateID> State<'a, S> {
         self.trans.next_state(input)
     }
 
-    fn set_next_state<'b: 'a>(&mut self, input: &'b str, next: S) {
+    fn set_next_state(&mut self, input: &str, next: S) {
         self.trans.set_next_state(input, next);
     }
 }
 
 #[derive(Clone)]
-struct Transitions<'a, S>(pub HashMap<&'a str, S>);
+struct Transitions<S>(pub HashMap<String, S>);
 
-impl<'a, S: StateID> Transitions<'a, S> {
+impl<S: StateID> Transitions<S> {
     fn heap_bytes(&self) -> usize {
-        self.0.len() * size_of::<(&'a str, S)>()
+        self.0.capacity() * size_of::<(String, S)>() + self.0.keys().map(|s| s.len()).sum::<usize>()
     }
 
     fn next_state(&self, input: &str) -> S {
-        self.0.get(input).cloned().unwrap_or(fail_id())
-
-        // for &(b, id) in &self.0 {
-        //     if b == input {
-        //         return id;
-        //     }
-        // }
-        // fail_id()
+        self.0.get(input).cloned().unwrap_or_else(fail_id)
     }
 
-    fn set_next_state<'b: 'a>(&mut self, input: &'b str, next: S) {
-        self.0.insert(input, next);
-        // match self.0.binary_search_by_key(&input, |&(b, _)| b) {
-        //     Ok(i) => self.0[i] = (input, next),
-        //     Err(i) => self.0.insert(i, (input, next)),
-        // }
+    fn set_next_state(&mut self, input: &str, next: S) {
+        self.0.insert(input.to_owned(), next);
     }
 }
 
-struct IterTransitionsMut<'a, 'b, S: StateID + 'a> {
-    nfa: &'a mut NFA<'b, S>,
+struct IterTransitionsMut<'a, S: StateID + 'a> {
+    nfa: &'a mut NFA<S>,
     state_id: S,
     cur: usize,
-    keys: Vec<&'b str>,
+    keys: Vec<String>,
 }
 
-impl<'a, 'b, S: StateID> IterTransitionsMut<'a, 'b, S> {
-    fn new(nfa: &'a mut NFA<'b, S>, state_id: S) -> IterTransitionsMut<'a, 'b, S> {
-        let keys = nfa.states[state_id.to_usize()].trans.0.keys().cloned().collect();
+impl<'a, S: StateID> IterTransitionsMut<'a, S> {
+    fn new(nfa: &'a mut NFA<S>, state_id: S) -> IterTransitionsMut<'a, S> {
+        let keys = nfa.states[state_id.to_usize()]
+            .trans
+            .0
+            .keys()
+            .cloned()
+            // .map(|s| s.as_ref())
+            .collect();
 
         IterTransitionsMut {
             nfa,
@@ -195,32 +189,32 @@ impl<'a, 'b, S: StateID> IterTransitionsMut<'a, 'b, S> {
         }
     }
 
-    fn nfa(&mut self) -> &mut NFA<'b, S> {
+    fn nfa(&mut self) -> &mut NFA<S> {
         self.nfa
     }
 }
 
-impl<'a, 'b, S: StateID> Iterator for IterTransitionsMut<'a, 'b, S> {
-    type Item = (&'b str, S);
+impl<'a, S: StateID> Iterator for IterTransitionsMut<'a, S> {
+    type Item = (String, S);
 
-    fn next(&mut self) -> Option<(&'b str, S)> {
+    fn next(&mut self) -> Option<(String, S)> {
         let trans = &self.nfa.states[self.state_id.to_usize()].trans;
         if self.cur >= trans.0.len() {
             return None;
         }
         let i = self.cur;
-        let key = self.keys[i];
+        let key = &self.keys[i];
         self.cur += 1;
-        Some((key, trans.0[key]))
+        Some((key.to_owned(), trans.0[key]))
     }
 }
 
-struct Compiler<'a, S: StateID> {
-    nfa: NFA<'a, S>,
+struct Compiler<S: StateID> {
+    nfa: NFA<S>,
 }
 
-impl<'a, S: StateID> Compiler<'a, S> {
-    fn new() -> Option<Compiler<'a, S>> {
+impl<S: StateID> Compiler<S> {
+    fn new() -> Option<Compiler<S>> {
         Some(Compiler {
             nfa: NFA {
                 start_id: usize_to_state_id(1)?,
@@ -232,20 +226,17 @@ impl<'a, S: StateID> Compiler<'a, S> {
         })
     }
 
-    fn compile<I>(mut self, patterns: I) -> Option<NFA<'a, S>>
+    fn compile<'a, I>(mut self, patterns: I) -> Option<NFA<S>>
     where
         I: IntoIterator<Item = &'a str>,
     {
-        use unicode_segmentation::UnicodeSegmentation;
+        use crate::word_split_trait::WordBoundarySplitter;
 
         self.add_state()?; // the fail state, which is never entered
         self.add_state()?; // the start state
         let patterns: Vec<Vec<_>> = patterns
             .into_iter()
-            .map(|p| {
-                p.unicode_words()
-                 .collect()
-            })
+            .map(|p| p.unicode_words_and_syms().collect())
             .collect();
         self.build_trie(&patterns)?;
         self.fill_failure_transitions_standard();
@@ -257,8 +248,8 @@ impl<'a, S: StateID> Compiler<'a, S> {
     /// automaton. Effectively, it creates the basic structure of the
     /// automaton, where every pattern given has a path from the start state to
     /// the end of the pattern.
-    fn build_trie<'b>(&mut self, patterns: &'b [Vec<&'a str>]) -> Option<()> {
-        'PATTERNS: for (pati, pat) in patterns.into_iter().enumerate() {
+    fn build_trie(&mut self, patterns: &[Vec<&str>]) -> Option<()> {
+        for (pati, pat) in patterns.iter().enumerate() {
             self.nfa.max_pattern_len = cmp::max(self.nfa.max_pattern_len, pat.len());
             self.nfa.pattern_count += 1;
 
@@ -410,14 +401,14 @@ impl<'a, S: StateID> Compiler<'a, S> {
                 queue.push_back(next);
 
                 let mut fail = it.nfa().state(id).fail;
-                while it.nfa().state(fail).next_state(b) == fail_id() {
+                while it.nfa().state(fail).next_state(&b) == fail_id() {
                     let new_fail = it.nfa().state(fail).fail;
                     if new_fail == fail {
                         break;
                     }
                     fail = new_fail;
                 }
-                fail = it.nfa().state(fail).next_state(b);
+                fail = it.nfa().state(fail).next_state(&b);
                 it.nfa().state_mut(next).fail = fail;
                 it.nfa().copy_matches(fail, next);
             }
@@ -453,7 +444,7 @@ impl<'a, S: StateID> Compiler<'a, S> {
     }
 }
 
-pub(crate) fn build_nfa<'a, I, S: StateID>(patterns: I) -> Option<NFA<'a, S>>
+pub(crate) fn build_nfa<'a, I, S: StateID>(patterns: I) -> Option<NFA<S>>
 where
     I: IntoIterator<Item = &'a str>,
 {

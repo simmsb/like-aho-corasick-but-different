@@ -4,6 +4,9 @@ mod ahocorasick;
 mod automaton;
 mod nfa;
 mod state_id;
+mod word_split_trait;
+mod unicode_tables;
+
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Match {
@@ -56,17 +59,17 @@ impl Match {
     }
 }
 
-pub struct SimpleFinder<'p, D> {
-    aho: ahocorasick::AhoCorasick<'p>,
+pub struct SimpleFinder<D> {
+    aho: ahocorasick::AhoCorasick,
     data: HashMap<usize, D>,
 }
 
-pub struct SimpleFinderIter<'a, 'b, 'p, D> {
-    finder: &'a SimpleFinder<'p, D>,
-    iter: ahocorasick::FindOverlappingIter<'a, 'b, 'p, usize>,
+pub struct SimpleFinderIter<'a, 'b, D> {
+    finder: &'a SimpleFinder<D>,
+    iter: ahocorasick::FindOverlappingIter<'a, 'b, usize>,
 }
 
-impl<'a, 'b, 'p, D> Iterator for SimpleFinderIter<'a, 'b, 'p, D> {
+impl<'a, 'b, D> Iterator for SimpleFinderIter<'a, 'b, D> {
     type Item = (Match, &'a D);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -77,8 +80,8 @@ impl<'a, 'b, 'p, D> Iterator for SimpleFinderIter<'a, 'b, 'p, D> {
     }
 }
 
-impl<'p, D> SimpleFinder<'p, D> {
-    pub fn new<I>(patterns: I) -> Self
+impl<D> SimpleFinder<D> {
+    pub fn new<'p, I>(patterns: I) -> Self
     where
         I: IntoIterator<Item = (&'p str, D)>,
     {
@@ -91,7 +94,7 @@ impl<'p, D> SimpleFinder<'p, D> {
         SimpleFinder { aho, data }
     }
 
-    pub fn find_all<'a, 'b: 'a>(&'a self, haystack: &'b str) -> SimpleFinderIter<'a, 'b, 'p, D> {
+    pub fn find_all<'a: 'b, 'b>(&'a self, haystack: &'b str) -> SimpleFinderIter<'a, 'b, D> {
         SimpleFinderIter {
             finder: self,
             iter: self.aho.find_overlapping_iter(haystack),
@@ -105,9 +108,13 @@ impl<'p, D> SimpleFinder<'p, D> {
     pub fn heap_bytes(&self) -> usize {
         self.aho.heap_bytes() + self.data.capacity() * (std::mem::size_of::<(usize, D)>())
     }
+
+    pub fn data(&self) -> &HashMap<usize, D> {
+        &self.data
+    }
 }
 
-impl<'p, D: std::hash::Hash + std::cmp::Eq + Copy> SimpleFinder<'p, D> {
+impl<'p, D: std::hash::Hash + std::cmp::Eq + Copy> SimpleFinder<D> {
     pub fn find_all_unique<'a, 'b>(&'a self, haystack: &'b str) -> HashSet<D> {
         self.find_all(haystack).map(|(_, d)| *d).collect()
     }
@@ -134,8 +141,8 @@ mod test {
 
         assert_eq!(
             results.len(),
-            6,
-            "Results {:?} was not 6 in length?",
+            8,
+            "Results {:?} was not 8 in length?",
             results
         );
         assert!(results.contains(&123));
