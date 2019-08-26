@@ -10,6 +10,18 @@ impl<'a> Iterator for UnicodeWordBoundaries<'a> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<Self::Item> {
+        fn should_split(lhs: char, rhs: char) -> bool {
+            if is_word_character(lhs) != is_word_character(rhs) {
+                return true;
+            }
+
+            if lhs.is_whitespace() != rhs.is_whitespace() {
+                return true;
+            }
+
+            false
+        }
+
         if self.s.is_empty() {
             return None;
         }
@@ -17,7 +29,7 @@ impl<'a> Iterator for UnicodeWordBoundaries<'a> {
         let mut c_it = self.s.char_indices().peekable();
 
         while let (Some((_, l)), Some((r_idx, r))) = (c_it.next(), c_it.peek().cloned()) {
-            if is_word_character(l) != is_word_character(r) {
+            if should_split(l, r) {
                 let (lhs, rhs) = self.s.split_at(r_idx);
                 self.s = rhs;
 

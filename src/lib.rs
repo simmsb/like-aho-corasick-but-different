@@ -189,7 +189,7 @@ mod test {
                     Match {
                         pattern: 1,
                         len: 4,
-                        end: 4
+                        end: 5
                     },
                     &2
                 ),
@@ -197,7 +197,7 @@ mod test {
                     Match {
                         pattern: 1,
                         len: 4,
-                        end: 8
+                        end: 9
                     },
                     &2
                 ),
@@ -205,7 +205,7 @@ mod test {
                     Match {
                         pattern: 0,
                         len: 4,
-                        end: 12
+                        end: 13
                     },
                     &0
                 )
