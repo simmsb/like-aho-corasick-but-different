@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::{
     automaton::Automaton,
     nfa::{self, NFA},
@@ -29,6 +30,7 @@ impl<S: StateID> AhoCorasick<S> {
 
 pub(crate) struct FindOverlappingIter<'a, 'b, S: 'a + StateID> {
     fsm: &'a NFA<S>,
+    word_char_idx_map: HashMap<u32, u32>,
     haystack: Vec<&'b str>,
     pos: usize,
     state_id: S,
@@ -38,16 +40,23 @@ pub(crate) struct FindOverlappingIter<'a, 'b, S: 'a + StateID> {
 impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
     fn new(
         ac: &'a AhoCorasick<S>,
-        haystack: &'b str,
+        haystack_str: &'b str,
     ) -> FindOverlappingIter<'a, 'b, S> {
         use crate::word_split_trait::WordBoundarySplitter;
 
-        let haystack = haystack
-            .unicode_words_and_syms()
-            .collect();
+        let mut word_char_idx_map = HashMap::new();
+        let mut haystack = Vec::new();
+
+        for (word_idx, (char_idx, word)) in haystack_str
+            .unicode_words_and_syms_indices()
+            .enumerate() {
+                word_char_idx_map.insert(word_idx as u32, char_idx);
+                haystack.push(word);
+            }
 
         FindOverlappingIter {
             fsm: &ac.imp,
+            word_char_idx_map,
             haystack,
             pos: 0,
             state_id: ac.imp.start_state(),
@@ -68,8 +77,15 @@ impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
         );
         match result {
             None => None,
-            Some(m) => {
+            Some(mut m) => {
                 self.pos = m.end();
+
+                let start_idx = self.word_char_idx_map.get(&((m.end - m.len) as u32))?;
+                let end_idx   = self.word_char_idx_map.get(&(m.end as u32 - 1))?;
+
+                let len = end_idx - start_idx;
+                m.len = len as usize;
+                m.end = *end_idx as usize;
                 Some(m)
             }
         }

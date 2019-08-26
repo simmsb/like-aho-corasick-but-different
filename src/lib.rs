@@ -188,24 +188,24 @@ mod test {
                 (
                     Match {
                         pattern: 1,
-                        len: 2,
-                        end: 2
+                        len: 4,
+                        end: 4
                     },
                     &2
                 ),
                 (
                     Match {
                         pattern: 1,
-                        len: 2,
-                        end: 3
+                        len: 4,
+                        end: 8
                     },
                     &2
                 ),
                 (
                     Match {
                         pattern: 0,
-                        len: 2,
-                        end: 4
+                        len: 4,
+                        end: 12
                     },
                     &0
                 )

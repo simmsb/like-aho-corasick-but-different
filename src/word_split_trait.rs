@@ -41,7 +41,53 @@ impl<'a> Iterator for UnicodeWordsAndSyms<'a> {
     type Item = &'a str;
 
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> { self.inner.next() }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+struct UnicodeWordsAndSymsIndicesInner<'a> {
+    current_offset: u32,
+    inner: UnicodeWordBoundaries<'a>,
+}
+
+impl<'a> UnicodeWordsAndSymsIndicesInner<'a> {
+    fn new(init: &'a str) -> Self {
+        UnicodeWordsAndSymsIndicesInner {
+            current_offset: 0,
+            inner: UnicodeWordBoundaries { s: init },
+        }
+    }
+}
+
+impl<'a> Iterator for UnicodeWordsAndSymsIndicesInner<'a> {
+    type Item = (u32, &'a str);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.inner.next()?;
+
+        let offset = self.current_offset;
+        self.current_offset += next.chars().count() as u32;
+
+        Some((offset, next))
+    }
+}
+
+pub struct UnicodeWordsAndSymsIndices<'a> {
+    inner: Filter<
+        Map<UnicodeWordsAndSymsIndicesInner<'a>, fn((u32, &str)) -> (u32, &str)>,
+        fn(&(u32, &str)) -> bool,
+    >,
+}
+
+impl<'a> Iterator for UnicodeWordsAndSymsIndices<'a> {
+    type Item = (u32, &'a str);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
 }
 
 fn is_word_byte(c: u8) -> bool {
@@ -73,6 +119,8 @@ fn is_word_character(c: char) -> bool {
 
 pub trait WordBoundarySplitter {
     fn unicode_words_and_syms(&self) -> UnicodeWordsAndSyms;
+
+    fn unicode_words_and_syms_indices(&self) -> UnicodeWordsAndSymsIndices;
 }
 
 impl WordBoundarySplitter for str {
@@ -87,8 +135,30 @@ impl WordBoundarySplitter for str {
                 .filter(is_not_empty),
         }
     }
-}
 
+    fn unicode_words_and_syms_indices(&self) -> UnicodeWordsAndSymsIndices {
+        fn trim((idx, s): (u32, &str)) -> (u32, &str) {
+            // keep idx correct
+
+            let new_s = s.trim_start();
+
+            let removed_chars = s.chars().count() - new_s.chars().count();
+            let s = new_s.trim_end();
+
+            (idx + removed_chars as u32, s)
+        }
+
+        fn is_not_empty((_, s): &(u32, &str)) -> bool {
+            !s.is_empty()
+        }
+
+        UnicodeWordsAndSymsIndices {
+            inner: UnicodeWordsAndSymsIndicesInner::new(self)
+                .map(trim as fn ((u32, &str)) -> (u32, &str))
+                .filter(is_not_empty as fn(&(u32, &str)) -> bool),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -96,7 +166,11 @@ mod tests {
 
     #[test]
     fn check_boundary_splits() {
-        assert_eq!("aaa.bbb,ccc'ddd@eee".unicode_words_and_syms().collect::<Vec<_>>(),
-                   vec!["aaa", ".", "bbb", ",", "ccc", "\'", "ddd", "@", "eee"]);
+        assert_eq!(
+            "aaa.bbb,ccc'ddd@eee"
+                .unicode_words_and_syms()
+                .collect::<Vec<_>>(),
+            vec!["aaa", ".", "bbb", ",", "ccc", "\'", "ddd", "@", "eee"]
+        );
     }
 }
