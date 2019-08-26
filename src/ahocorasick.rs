@@ -44,6 +44,8 @@ impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
     ) -> FindOverlappingIter<'a, 'b, S> {
         use crate::word_split_trait::WordBoundarySplitter;
 
+        let input_len = haystack_str.chars().count() + 1;
+
         let mut word_char_idx_map = HashMap::new();
         let mut haystack = Vec::new();
 
@@ -53,6 +55,8 @@ impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
                 word_char_idx_map.insert(word_idx as u32, char_idx);
                 haystack.push(word);
             }
+
+        word_char_idx_map.insert(haystack.len() as u32, input_len as u32);
 
         FindOverlappingIter {
             fsm: &ac.imp,
@@ -81,11 +85,11 @@ impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
                 self.pos = m.end();
 
                 let start_idx = self.word_char_idx_map.get(&((m.end - m.len) as u32))?;
-                let end_idx   = self.word_char_idx_map.get(&(m.end as u32 - 1))?;
+                let end_idx   = self.word_char_idx_map.get(&(m.end as u32))? - 1;
 
                 let len = end_idx - start_idx;
                 m.len = len as usize;
-                m.end = *end_idx as usize + 1;
+                m.end = end_idx as usize;
                 Some(m)
             }
         }
