@@ -85,7 +85,7 @@ impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
 
                 let len = end_idx - start_idx;
                 m.len = len as usize;
-                m.end = *end_idx as usize;
+                m.end = *end_idx as usize + 1;
                 Some(m)
             }
         }
