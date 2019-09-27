@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::{
     automaton::Automaton,
     nfa::{self, NFA},
@@ -30,7 +29,7 @@ impl<S: StateID> AhoCorasick<S> {
 
 pub(crate) struct FindOverlappingIter<'a, 'b, S: 'a + StateID> {
     fsm: &'a NFA<S>,
-    word_char_idx_map: HashMap<u32, u32>,
+    word_char_idx_map: Vec<u32>,
     haystack: Vec<&'b str>,
     pos: usize,
     state_id: S,
@@ -38,25 +37,15 @@ pub(crate) struct FindOverlappingIter<'a, 'b, S: 'a + StateID> {
 }
 
 impl<'a, 'b, S: StateID> FindOverlappingIter<'a, 'b, S> {
-    fn new(
-        ac: &'a AhoCorasick<S>,
-        haystack_str: &'b str,
-    ) -> FindOverlappingIter<'a, 'b, S> {
+    fn new(ac: &'a AhoCorasick<S>, haystack_str: &'b str) -> FindOverlappingIter<'a, 'b, S> {
         use crate::word_split_trait::WordBoundarySplitter;
 
         let input_len = haystack_str.chars().count() + 1;
 
-        let mut word_char_idx_map = HashMap::new();
-        let mut haystack = Vec::new();
+        let (mut word_char_idx_map, haystack): (Vec<_>, Vec<_>) =
+            haystack_str.unicode_words_and_syms_indices().unzip();
 
-        for (word_idx, (char_idx, word)) in haystack_str
-            .unicode_words_and_syms_indices()
-            .enumerate() {
-                word_char_idx_map.insert(word_idx as u32, char_idx);
-                haystack.push(word);
-            }
-
-        word_char_idx_map.insert(haystack.len() as u32, input_len as u32);
+        word_char_idx_map.push(input_len as u32);
 
         FindOverlappingIter {
             fsm: &ac.imp,
@@ -84,8 +73,8 @@ impl<'a, 'b, S: StateID> Iterator for FindOverlappingIter<'a, 'b, S> {
             Some(mut m) => {
                 self.pos = m.end();
 
-                let start_idx = self.word_char_idx_map.get(&((m.end - m.len) as u32))?;
-                let end_idx   = self.word_char_idx_map.get(&(m.end as u32))? - 1;
+                let start_idx = self.word_char_idx_map[m.end - m.len];
+                let end_idx = self.word_char_idx_map[m.end - 1];
 
                 let len = end_idx - start_idx;
                 m.len = len as usize;

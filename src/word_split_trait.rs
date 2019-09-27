@@ -1,6 +1,38 @@
 use std::iter::{Filter, Map};
 
-// use unicode_tables::perl_word::PERL_WORD;
+// pub fn split_unicode_word_and_syms(s: &str) -> Vec<(usize, &str)> {
+//     let chars_and_stuff: Vec<_> = s.char_indices()
+//                                    .map(|(idx, c)| (idx, c, is_word_character(c), c.is_whitespace()))
+//                                    .collect();
+
+//     let mut results = Vec::new();
+
+//     let mut left_idx = 0;
+//     let mut last_c_idx = 0;
+
+//     for (c_idx, ((_, _, l_isw, l_iss), (r_idx, _, r_isw, r_iss))) in
+//         chars_and_stuff.iter().zip(chars_and_stuff.iter().skip(1)).enumerate() {
+//             last_c_idx = c_idx;
+
+//             if !((l_isw != r_isw) || *l_iss || *r_iss) {
+//                 continue;
+//             }
+
+//             let n_s = &s[left_idx..*r_idx];
+
+//             left_idx = *r_idx;
+
+//             if !n_s.trim().is_empty() {
+//                 results.push((c_idx - 2, n_s));
+//             }
+//         }
+
+//     if !(&s[left_idx..]).is_empty() {
+//         results.push((last_c_idx.saturating_sub(2), &s[left_idx..]));
+//     }
+
+//     results
+// }
 
 struct UnicodeWordBoundaries<'a> {
     s: &'a str,
@@ -9,27 +41,19 @@ struct UnicodeWordBoundaries<'a> {
 impl<'a> Iterator for UnicodeWordBoundaries<'a> {
     type Item = &'a str;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        fn should_split(lhs: char, rhs: char) -> bool {
-            if is_word_character(lhs) != is_word_character(rhs) {
-                return true;
-            }
-
-            if lhs.is_whitespace() != rhs.is_whitespace() {
-                return true;
-            }
-
-            false
-        }
-
         if self.s.is_empty() {
             return None;
         }
 
-        let mut c_it = self.s.char_indices().peekable();
+        let mut c_it = self.s.char_indices()
+                             .map(|(idx, c)| ((is_word_character(c), c.is_whitespace()), idx))
+                             .peekable();
 
-        while let (Some((_, l)), Some((r_idx, r))) = (c_it.next(), c_it.peek().cloned()) {
-            if should_split(l, r) {
+        while let (Some(((lhs_is_word, lhs_is_ws), _)),
+                   Some(((rhs_is_word, rhs_is_ws), r_idx))) = (c_it.next(), c_it.peek().cloned()) {
+            if (lhs_is_word != rhs_is_word) || (lhs_is_ws != rhs_is_ws) {
                 let (lhs, rhs) = self.s.split_at(r_idx);
                 self.s = rhs;
 
@@ -116,6 +140,7 @@ fn is_word_character(c: char) -> bool {
     if c <= 0x7F as char && is_word_byte(c as u8) {
         return true;
     }
+
     PERL_WORD
         .binary_search_by(|&(start, end)| {
             if start <= c && c <= end {
